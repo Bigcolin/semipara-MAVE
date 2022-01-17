@@ -1,0 +1,126 @@
+using DataFrames, CSV, DelimitedFiles
+using Statistics, LinearAlgebra, CategoricalArrays
+using Distributions, Clustering, Random, Optim
+
+
+function Base.:-(X::Matrix, xi::Vector)
+    n, p = size(X)
+    if length(xi) == p
+        Xi = repeat(xi|>transpose, n, 1)
+    elseif length(xi) == n
+        Xi = repeat(xi, 1, p)
+    else
+        println("the length of xi are not n or p")
+    end    
+    _Xi = X - Xi
+    _Xi
+end
+    
+distribution_ker = Normal(0, 1)
+    
+function epker(x::Float64)
+    i = abs(x) <= 1
+    return 0.75 * (1 - x^2) * i
+end
+function gsker(x::Float64)
+    pdf(distribution_ker, x)
+    # exp(- x^2 / 2)
+end
+
+function ker(x::Float64)
+    gsker(x)
+end
+
+function ker(x::Vector, h::Float64)
+	ker.(x/h)/h
+end
+
+function ker(x::Vector, h::Vector)
+    d = length(x)
+    v = 1
+    for i in 1:d 
+        v *= ker(x[i]/h[i])/h[i]
+    end
+    v
+end
+
+function ker(X::Matrix, h::Vector)
+    n, p = size(X)
+    v = zeros(n)
+    for i in 1:n
+        v[i] = ker(X[i, :], h)
+    end
+    v
+end
+
+
+function collection(c)
+    n  = length(c)
+    categ_c = []
+    dict_c = Dict()
+    for i in 1:n
+        if c[i] in categ_c
+            push!(dict_c[c[i]], i)
+        else
+            push!(categ_c, c[i])
+            dict_c[c[i]] = [i]
+        end
+    end
+    # most_c = argmax(length.(dict_c[z] for z in categ_c))
+    categ_c, dict_c  # , categ_c[most_c]
+end
+
+function collection(c::Vector)
+    n  = length(c)
+    categ_c = []
+    dict_c = Dict()
+    for i in 1:n
+        if c[i] in categ_c
+            push!(dict_c[c[i]], i)
+        else
+            push!(categ_c, c[i])
+            dict_c[c[i]] = [i]
+        end
+    end
+    # most_c = argmax(length.(dict_c[z] for z in categ_c))
+    categ_c, dict_c  # , categ_c[most_c]
+end
+
+function collection(c::Matrix)
+    n,  = size(c)
+    categ_c = []
+    dict_c = Dict()
+    for i in 1:n
+        if c[i, :] in categ_c
+            push!(dict_c[c[i, :]], i)
+        else
+            push!(categ_c, c[i, :])
+            dict_c[c[i, :]] = [i]
+        end
+    end
+    # most_c = argmax(length.(dict_c[z] for z in categ_c))
+    categ_c, dict_c # , categ_c[most_c]
+end
+
+function categ_binary(Z::T where T <:Array)
+    n,  = size(Z)
+    categ, index = collection(Z)
+    ncateg = length(categ)
+    res = Int.(zeros(n, ncateg))
+    zmap = Dict()
+    for k in 1:ncateg
+        bin_z = Int.(zeros(ncateg))
+        zk = categ[k]
+        res[index[zk], k] .= 1
+        bin_z[k] = 1
+        Dict[zk] = bin_z
+    end
+    res, Dict
+end
+
+function scaler(X::Matrix{Float64}, stdv = 1.0)
+    ntrain, = size(X)
+    Xr = X .- mean(X, dims = 1)
+    Xr = Xr ./ std(Xr, dims = 1) .* stdv
+    Xr 
+end

@@ -1,0 +1,71 @@
+module semiMAVE
+    include("supportFunctions.ji")
+
+    mutable struct model
+        X::Matrix{Float64}
+        Z::Matrix{Int64}
+        y::Vector
+        n::Int
+        p::Int
+        q::Int
+        gv::Vector
+        dgv::Vector
+        β::Vector{Float64}
+        θ::Vector{Float64}
+
+        function model(df::DataFrame, name_x::Vector{Symbol}, name_z::Vector{Symbol}, name_y::Symbol)
+
+            X = Array(df[!, name_x])
+            Z = Array(df[!, name_z])
+            y = Array(df[!, name_y])
+
+            n, p = size(X)
+            n, q = size(Z)
+            new(X, Z, y, n, p, q)
+        end
+
+        function model(X::Matrix, Z::Array, y::Vector)
+
+            n, p = size(X)
+            n, q = size(Z)
+            new(X, Z, y, n, p, q)
+        end
+    end
+
+    function estimator_mse(m::model, beta, theta)
+        v = m.X*theta
+        h = var(v)*(m.n)^(-0.17)
+
+        gv, dgv = zeros(m.n), zeros(m.n)
+
+        for k in 1:m.n
+            vk = hat(ones(n), v - m.X[k, :]*theta)
+            wk = ker(vk, h)
+            b = pinv(transpose(vk) * wk * vk)*transpose(vk) * wk * (m.y - m.Z * beta)
+
+            gv[k], dgv[k] = b[0], b[1]
+        end
+        gv, dgv
+    end
+
+
+    function estimator_locallinear(m::model, gv, dgv)
+
+
+    end
+
+    function estimator(m::model)
+        n, p = size(m.X)
+        n, q = size(m.Z)
+        _β, β_, _θ, θ_ = rand(q), rand(q), rand(p), rand(p) 
+
+        while norm(β_ - _β) > 1e-3
+            gv, dgv = estimator_mse(m, _β, _θ)
+            β_, θ_ = estimator_locallinear(m, gv, dgv)
+        end
+        m.β, m.θ = β_, θ_
+    end
+
+
+end
+
