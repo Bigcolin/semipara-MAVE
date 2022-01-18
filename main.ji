@@ -1,0 +1,27 @@
+include("./src/DGP.ji")
+include("./src/supportFunctions.ji")
+include("./src/semi_mave.ji")
+
+function generated_model()
+    n = 500
+    θ = [1, -0.5, 2, 1]
+    β = [-2, 0.5, -1]
+    X, Z, y = dgp(n, θ, β)
+
+    model1 = semiMAVE.model(X, Z, y)
+    semiMAVE.estimator(model1)
+    model1
+end
+
+function  realworld_model()
+    cardata = DataFrame(CSV.File("./datasets/auto-mpg.csv"))
+    indcar = cardata[:horsepower] .!= "?"
+    cardata = cardata[indcar,:]
+    cardata[:horsepower] = parse.(Float64, cardata[:horsepower]) 
+    noy = :mpg
+    nox = [:displacement, :weight, :acceleration, :horsepower] # 
+    noz = [:origin]
+    model2 = semiMAVE.model(cardata, nox, noz, noy)
+    semiMAVE.estimator(model2)
+    model2
+end

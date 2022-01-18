@@ -113,13 +113,13 @@ function categ_binary(Z::T where T <:Array)
         zk = categ[k]
         res[index[zk], k] .= 1
         bin_z[k] = 1
-        Dict[zk] = bin_z
+        zmap[zk] = bin_z
     end
-    res, Dict
+    res, zmap
 end
 
 function scaler(X::Matrix{Float64}, stdv = 1.0)
-    ntrain, = size(X)
+    
     Xr = X .- mean(X, dims = 1)
     Xr = Xr ./ std(Xr, dims = 1) .* stdv
     Xr 
